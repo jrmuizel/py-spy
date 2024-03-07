@@ -5,6 +5,7 @@ extern crate log;
 
 mod binary_parser;
 mod chrometrace;
+mod gecko;
 mod config;
 mod console_viewer;
 #[cfg(target_os = "linux")]
@@ -118,6 +119,15 @@ impl Recorder for chrometrace::Chrometrace {
     }
 }
 
+impl Recorder for gecko::Geckotrace {
+    fn increment(&mut self, trace: &StackTrace) -> Result<(), Error> {
+        Ok(self.increment(trace)?)
+    }
+    fn write(&self, w: &mut dyn Write) -> Result<(), Error> {
+        self.write(w)
+    }
+}
+
 pub struct RawFlamegraph(flamegraph::Flamegraph);
 
 impl Recorder for RawFlamegraph {
@@ -142,6 +152,9 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
         Some(FileFormat::chrometrace) => {
             Box::new(chrometrace::Chrometrace::new(config.show_line_numbers))
         }
+        Some(FileFormat::gecko) => {
+            Box::new(gecko::Geckotrace::new(config.show_line_numbers))
+        }
         None => return Err(format_err!("A file format is required to record samples")),
     };
 
@@ -153,6 +166,7 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
                 Some(FileFormat::speedscope) => "json",
                 Some(FileFormat::raw) => "txt",
                 Some(FileFormat::chrometrace) => "json",
+                Some(FileFormat::gecko) => "json",
                 None => return Err(format_err!("A file format is required to record samples")),
             };
             let local_time = Local::now().to_rfc3339_opts(SecondsFormat::Secs, true);
@@ -363,6 +377,12 @@ fn record_samples(pid: remoteprocess::Pid, config: &Config) -> Result<(), Error>
                 lede, filename, samples, errors
             );
             println!("{}Visit chrome://tracing to view", lede);
+        }
+        FileFormat::gecko => {
+            println!(
+                "{}Wrote gecko profile trace to '{}'. Samples: {} Errors: {}",
+                lede, filename, samples, errors
+            );
         }
     };
 

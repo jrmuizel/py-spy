@@ -68,6 +68,7 @@ pub enum FileFormat {
     raw,
     speedscope,
     chrometrace,
+    gecko,
 }
 
 impl FileFormat {
